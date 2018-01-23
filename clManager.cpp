@@ -18,8 +18,9 @@ namespace op
     {
         if(getFromVienna)
         {
-            context = cl::Context(viennacl::ocl::get_context(deviceId).handle().get(), true);
-            queue = cl::CommandQueue(viennacl::ocl::get_context(deviceId).get_queue().handle().get(), true);
+
+            context = cl::Context(caffe::Caffe::GetOpenCLContext(deviceId, 0), true);
+            queue = cl::CommandQueue(caffe::Caffe::GetOpenCLQueue(deviceId, 0), true);
             //context.printContext();
         }
         else
