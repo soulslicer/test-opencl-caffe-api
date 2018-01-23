@@ -18,14 +18,129 @@ namespace op
     {
         if(getFromVienna)
         {
-
             context = cl::Context(caffe::Caffe::GetOpenCLContext(deviceId, 0), true);
             queue = cl::CommandQueue(caffe::Caffe::GetOpenCLQueue(deviceId, 0), true);
             //context.printContext();
         }
         else
         {
-            throw std::runtime_error("Error: Set variable getFromVienna to true");
+            std::vector<cl::Platform> platforms;
+            std::vector<cl::Device> devices;
+            std::string deviceName;
+            cl_uint i, type;
+            try {
+                cl::Platform::get(&platforms);
+                switch(deviceType)
+                {
+                    case CL_DEVICE_TYPE_GPU:
+                    {
+                        type = platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
+                        if( type == CL_SUCCESS)
+                        {
+                            // Get only relavent device
+                            cl::Context allContext(devices);
+                            std::vector<cl::Device> gpuDevices;
+                            gpuDevices = allContext.getInfo<CL_CONTEXT_DEVICES>();
+                            bool deviceFound = false;
+                            for(int i=0; i<gpuDevices.size(); i++){
+                                if(i == deviceId){
+                                    device = gpuDevices[i];
+                                    context = cl::Context(device);
+                                    queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                                    deviceFound = true;
+                                    cout << "Made new GPU Instance: " << deviceId << endl;
+                                    break;
+                                }
+                            }
+                            if(!deviceFound)
+                            {
+                                throw std::runtime_error("Error: Invalid GPU ID");
+                            }
+                        }
+                        else if(type == CL_INVALID_DEVICE_TYPE || type == CL_DEVICE_NOT_FOUND)
+                        {
+                            throw std::runtime_error("Error: GPU Invalid Device or Device not found");
+                        }
+                        break;
+                    }
+
+                    case CL_DEVICE_TYPE_CPU:
+                    {
+                        cl::Platform::get(&platforms);
+                        type = platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &devices);
+                        if( type == CL_SUCCESS)
+                        {
+                            // Get only relavent device
+                            std::vector<cl::Device> devices;
+                            cl::Context allContext(devices);
+                            std::vector<cl::Device> cpuDevices;
+                            cpuDevices = allContext.getInfo<CL_CONTEXT_DEVICES>();
+                            bool deviceFound = false;
+                            for(int i=0; i<cpuDevices.size(); i++){
+                                if(i == deviceId){
+                                    device = cpuDevices[i];
+                                    context = cl::Context(device);
+                                    queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                                    deviceFound = true;
+                                    cout << "Made new CPU Instance: " << deviceId << endl;
+                                    break;
+                                }
+                            }
+                            if(!deviceFound)
+                            {
+                                throw std::runtime_error("Error: Invalid CPU ID");
+                            }
+                        }
+                        else if(type == CL_INVALID_DEVICE_TYPE || type == CL_DEVICE_NOT_FOUND)
+                        {
+                            throw std::runtime_error("Error: CPU Invalid Device or Device not found");
+                        }
+                        break;
+                    }
+
+                    case CL_DEVICE_TYPE_ACCELERATOR:
+                    {
+                        cl::Platform::get(&platforms);
+                        type = platforms[0].getDevices(CL_DEVICE_TYPE_ACCELERATOR, &devices);
+                        if( type == CL_SUCCESS)
+                        {
+                            // Get only relavent device
+                            std::vector<cl::Device> devices;
+                            cl::Context allContext(devices);
+                            std::vector<cl::Device> accDevices;
+                            accDevices = allContext.getInfo<CL_CONTEXT_DEVICES>();
+                            bool deviceFound = false;
+                            for(int i=0; i<accDevices.size(); i++){
+                                if(i == deviceId){
+                                    device = accDevices[i];
+                                    context = cl::Context(device);
+                                    queue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+                                    deviceFound = true;
+                                    cout << "Made new ACC Instance: " << deviceId << endl;
+                                    break;
+                                }
+                            }
+                            if(!deviceFound)
+                            {
+                                throw std::runtime_error("Error: Invalid ACC ID");
+                            }
+                        }
+                        else if(type == CL_INVALID_DEVICE_TYPE || type == CL_DEVICE_NOT_FOUND)
+                        {
+                            throw std::runtime_error("Error: ACC Invalid Device or Device not found");
+                        }
+                        break;
+                    }
+
+                    default:
+                    {
+                        throw std::runtime_error("Error: No such CL Device Type");
+                    }
+                }
+            }
+            catch(cl::Error e) {
+                log("Error: " + std::string(e.what()));
+            }
         }
     }
 
@@ -61,7 +176,15 @@ namespace op
                 src = programString;
                 //src = std::regex_replace(src, std::regex(";"), std::string(";\n"));
             }
+            //cl::Program::Sources source(src);
+
             program = cl::Program(src, true);
+
+            //cout << "A" << endl;
+            //program = cl::Program(context, source);
+            //std::vector<cl::Device> devices; devices.push_back(device);
+            //program.build(devices);
+            //cout << "B" << endl;
         }
         catch(cl::Error e) {
             cerr << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(getDevice()) << endl;
@@ -102,4 +225,6 @@ namespace op
         }
         return clKernels[kernelName];
     }
+
+
 }
