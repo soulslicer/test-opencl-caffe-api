@@ -176,15 +176,7 @@ namespace op
                 src = programString;
                 //src = std::regex_replace(src, std::regex(";"), std::string(";\n"));
             }
-            //cl::Program::Sources source(src);
-
-            program = cl::Program(src, true);
-
-            //cout << "A" << endl;
-            //program = cl::Program(context, source);
-            //std::vector<cl::Device> devices; devices.push_back(device);
-            //program.build(devices);
-            //cout << "B" << endl;
+            program = cl::Program(context, src, true);
         }
         catch(cl::Error e) {
             cerr << program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(getDevice()) << endl;
