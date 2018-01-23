@@ -12,6 +12,10 @@ else()
         message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
+message("***********************")
+message("PLEASE SET YOUR CAFFE LIBS AND INCLUDE DIR PATH. AND DOWNLOAD THE CAFFE MODEL")
+message("***********************")
+
 find_package(OpenCV REQUIRED)
 find_package(OpenCL REQUIRED)
 set(Caffe_INCLUDE_DIRS /home/ryaadhav/caffe/include;/home/ryaadhav/caffe/build/include)
