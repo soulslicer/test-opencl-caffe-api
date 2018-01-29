@@ -20,8 +20,8 @@ namespace op
         {
             int i = get_global_id(0);
             int j = get_global_id(1);
-            if(i == 0 && j==0)
-                printf("%f\n",image[0]);
+            //if(i == 0 && j==0)
+            //    printf("%f\n",image[0]);
         }
     );
 }
@@ -30,6 +30,11 @@ class Net
 {
 public:
     std::unique_ptr<caffe::Net<float>> upCaffeNet;
+    bool log = false;
+    int gpuID = 0;
+    caffe::device* device;
+    std::shared_ptr<caffe::Caffe> caffe;
+    caffe::Caffe Caffe;
 
     Net(){
 
@@ -37,19 +42,25 @@ public:
 
     void initNet(std::string protoPath, std::string modelPath, int gpuID)
     {
-        // Load net
-        caffe::Caffe::set_mode(caffe::Caffe::GPU);
-        caffe::Caffe::SetDevice(gpuID);
-        caffe::device* device = caffe::Caffe::GetDevice(gpuID,0);
+
+        //caffe::Caffe::set_mode(caffe::Caffe::GPU);
+        //caffe::Caffe::SetDevice(gpuID);
+        this->gpuID = gpuID;
+        device = Caffe.GetDevice(gpuID,0);
+        Caffe.set_mode(caffe::Caffe::GPU);
+        Caffe.SetDevice(gpuID);
+        Caffe.SelectDevice(device);
         upCaffeNet.reset(new caffe::Net<float>{protoPath, caffe::TEST, device});
         upCaffeNet->CopyTrainedLayersFrom(modelPath);
-        cout << "Net Loaded " << gpuID << endl;
+        if(log) cout << "Net Loaded " << gpuID << endl;
 
         // Setup my OpenCL
         op::CLManager::getInstance(gpuID, CL_DEVICE_TYPE_GPU, true);
         op::CLManager::getInstance(gpuID)->buildKernelIntoManager("resizeAndMergeKernel",op::resizeAndMergeKernel);
-        cout << "OpenCL Setup" << gpuID << endl;
+        if(log) cout << "OpenCL Setup" << gpuID << endl;
+    }
 
+    void forwardNet(){
         // Load 1 image
         cv::Mat image, image2, image3;
         image = cv::imread(std::string(CMAKE_CURRENT_SOURCE_DIR) + "/image.jpg");
@@ -70,30 +81,31 @@ public:
         blob_proto.set_num(1);
         caffe::Blob<float>* input_layer = upCaffeNet->input_blobs()[0];
         input_layer->FromProto(blob_proto);
-        cout << "Image Loaded" << gpuID << endl;
+        if(log) cout << "Image Loaded" << gpuID << endl;
 
         // Forward Pass
         upCaffeNet->Forward();
-        cout << "Forward Done" << gpuID << endl;
+        if(log) cout << "Forward Done" << gpuID << endl;
 
         // Get my original image as a cl::Buffer
         const float* gpuData = input_layer->gpu_data();
         const float* cpuData = input_layer->cpu_data();
-        cout << "CPU: " << cpuData[0] << endl;
+        if(log) cout << "CPU: " << cpuData[0] << endl;
         cl_int err;
         cl::Buffer x((cl_mem)gpuData, true);
-        cout << "cl::Buffer setup" << gpuID << endl;
+        if(log) cout << "cl::Buffer setup" << gpuID << endl;
 
         // Run my Kernel
         cl::Kernel& resizeAndMergeKernel = op::CLManager::getInstance(gpuID)->getKernelFromManager("resizeAndMergeKernel");
         try{
             resizeAndMergeKernel.setArg(0,x);
         }catch(cl::Error& e){
-            cout << "ERROR: " << e.what() << gpuID << endl;
-            cout << "ERROR: " << e.err() << gpuID << endl;
+            if(log) cout << "*******ERROR: " << e.what() << gpuID << endl;
+            if(log) cout << "*******ERROR: " << e.err() << gpuID << endl;
+            return;
         }
         op::CLManager::getInstance(gpuID)->getQueue().enqueueNDRangeKernel(resizeAndMergeKernel, cl::NDRange(), cl::NDRange(224,224), cl::NDRange(), NULL, NULL);
-        cout << "OpenCL Kernel Run" << gpuID << endl;
+        if(log) cout << "OpenCL Kernel Run" << gpuID << endl;
     }
 };
 
@@ -105,13 +117,20 @@ void thread_handler(int gpuID){
     Net n;
     //m.lock();
     n.initNet(protoPath, modelPath, gpuID);
+    for(int i=0; i<500; i++)
+    n.forwardNet();
     //m.unlock();
 }
 
 int main(){
-    std::thread t1(&thread_handler,1);
-    std::thread t2(&thread_handler,2);
+    caffe::Caffe::set_mode(caffe::Caffe::GPU);
+    caffe::Caffe::SetDevice(0);
+
+    std::thread t1(&thread_handler,0);
+    std::thread t2(&thread_handler,1);
+    std::thread t3(&thread_handler,3);
     t1.join();
     t2.join();
+    t3.join();
     return 0;
 }
