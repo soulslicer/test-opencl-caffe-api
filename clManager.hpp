@@ -24,6 +24,7 @@ using namespace std;
 #include <caffe/net.hpp>
 #include <caffe/caffe.hpp>
 #include <viennacl/backend/opencl.hpp>
+#include <mutex>
 
 namespace op
 {

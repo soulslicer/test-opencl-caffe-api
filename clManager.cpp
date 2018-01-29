@@ -5,11 +5,14 @@ namespace op
     std::shared_ptr<CLManager> CLManager::getInstance(int deviceId, int deviceType, bool getFromVienna)
     {
         static std::map<int, std::shared_ptr<CLManager>> clManagers;
+        static std::mutex m;
         if(clManagers.count(deviceId))
             return clManagers[deviceId];
         else
         {
+            m.lock();
             clManagers[deviceId] = std::shared_ptr<CLManager>(new CLManager(deviceId, deviceType, getFromVienna));
+            m.unlock();
             return clManagers[deviceId];
         }
     }

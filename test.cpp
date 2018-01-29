@@ -98,11 +98,14 @@ public:
 };
 
 void thread_handler(int gpuID){
+    static std::mutex m;
     cout << gpuID << endl;
     std::string protoPath = std::string(CMAKE_CURRENT_SOURCE_DIR) + "/bvlc_googlenet/deploy.prototxt";
     std::string modelPath = std::string(CMAKE_CURRENT_SOURCE_DIR) + "/bvlc_googlenet/bvlc_googlenet.caffemodel";
     Net n;
+    //m.lock();
     n.initNet(protoPath, modelPath, gpuID);
+    //m.unlock();
 }
 
 int main(){
