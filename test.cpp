@@ -43,12 +43,12 @@ public:
         caffe::device* device = caffe::Caffe::GetDevice(gpuID,0);
         upCaffeNet.reset(new caffe::Net<float>{protoPath, caffe::TEST, device});
         upCaffeNet->CopyTrainedLayersFrom(modelPath);
-        cout << "Net Loaded" << endl;
+        cout << "Net Loaded " << gpuID << endl;
 
         // Setup my OpenCL
         op::CLManager::getInstance(gpuID, CL_DEVICE_TYPE_GPU, true);
         op::CLManager::getInstance(gpuID)->buildKernelIntoManager("resizeAndMergeKernel",op::resizeAndMergeKernel);
-        cout << "OpenCL Setup" << endl;
+        cout << "OpenCL Setup" << gpuID << endl;
 
         // Load 1 image
         cv::Mat image, image2, image3;
@@ -70,11 +70,11 @@ public:
         blob_proto.set_num(1);
         caffe::Blob<float>* input_layer = upCaffeNet->input_blobs()[0];
         input_layer->FromProto(blob_proto);
-        cout << "Image Loaded" << endl;
+        cout << "Image Loaded" << gpuID << endl;
 
         // Forward Pass
         upCaffeNet->Forward();
-        cout << "Forward Done" << endl;
+        cout << "Forward Done" << gpuID << endl;
 
         // Get my original image as a cl::Buffer
         const float* gpuData = input_layer->gpu_data();
@@ -82,18 +82,18 @@ public:
         cout << "CPU: " << cpuData[0] << endl;
         cl_int err;
         cl::Buffer x((cl_mem)gpuData, true);
-        cout << "cl::Buffer setup" << endl;
+        cout << "cl::Buffer setup" << gpuID << endl;
 
         // Run my Kernel
         cl::Kernel& resizeAndMergeKernel = op::CLManager::getInstance(gpuID)->getKernelFromManager("resizeAndMergeKernel");
         try{
             resizeAndMergeKernel.setArg(0,x);
         }catch(cl::Error& e){
-            cout << "ERROR: " << e.what() << endl;
-            cout << "ERROR: " << e.err() << endl;
+            cout << "ERROR: " << e.what() << gpuID << endl;
+            cout << "ERROR: " << e.err() << gpuID << endl;
         }
         op::CLManager::getInstance(gpuID)->getQueue().enqueueNDRangeKernel(resizeAndMergeKernel, cl::NDRange(), cl::NDRange(224,224), cl::NDRange(), NULL, NULL);
-        cout << "OpenCL Kernel Run" << endl;
+        cout << "OpenCL Kernel Run" << gpuID << endl;
     }
 };
 
