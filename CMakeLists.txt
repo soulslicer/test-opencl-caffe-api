@@ -41,4 +41,5 @@ target_link_libraries(
   ${Caffe_LIBS}
    ${OpenCV_LIBRARIES}
   -lboost_system
+  -pthread
 )

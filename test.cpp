@@ -7,6 +7,8 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 #include "clManager.hpp"
 #include <viennacl/backend/opencl.hpp>
+#include <thread>
+#include <mutex>
 void f(){viennacl::ocl::context &ctx = viennacl::ocl::get_context(0);}
 
 #define MULTI_LINE_STRING(ARG) #ARG
@@ -95,14 +97,18 @@ public:
     }
 };
 
-
-int main(){
-    // Load net
+void thread_handler(int gpuID){
+    cout << gpuID << endl;
     std::string protoPath = std::string(CMAKE_CURRENT_SOURCE_DIR) + "/bvlc_googlenet/deploy.prototxt";
     std::string modelPath = std::string(CMAKE_CURRENT_SOURCE_DIR) + "/bvlc_googlenet/bvlc_googlenet.caffemodel";
     Net n;
-    std::vector<std::shared_ptr<Net>> nets;
-    nets.emplace_back(std::make_shared<Net>(Net()));
-    nets.back()->initNet(protoPath, modelPath, 0);
+    n.initNet(protoPath, modelPath, gpuID);
+}
+
+int main(){
+    std::thread t1(&thread_handler,1);
+    std::thread t2(&thread_handler,2);
+    t1.join();
+    t2.join();
     return 0;
 }
